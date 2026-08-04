@@ -1,4 +1,10 @@
-export const BASE_URL = "http://localhost:5000/api";
+// Points to the permanently hosted backend on Vercel — same live backend
+// the farmer mobile app uses (see agrilink_mobile/lib/services/api_service.dart).
+// If you're doing local backend development and want this portal to hit
+// your own machine instead, comment the line below out and uncomment the
+// localhost one — just remember to switch it back before deploying/demoing.
+export const BASE_URL = "https://agrilink-backend.vercel.app/api";
+// export const BASE_URL = "http://localhost:5000/api";
 
 async function handleResponse(response) {
   try {
