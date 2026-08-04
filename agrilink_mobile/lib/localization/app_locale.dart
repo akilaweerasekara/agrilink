@@ -44,7 +44,10 @@ class AppLocale extends ChangeNotifier {
   }
 
   static const Map<String, Map<String, String>> _translations = {
-    "appName": {"en": "AgriLink AI", "si": "AgriLink AI"},
+    // Brand name — kept identical across languages, same way most Sri
+    // Lankan brand names stay in their original script regardless of
+    // interface language.
+    "appName": {"en": "ගොවි Tech", "si": "ගොවි Tech"},
     "tagline": {"en": "Smart Agriculture Ecosystem", "si": "ස්මාර්ට් කෘෂිකර්ම පද්ධතිය"},
     "signInToContinue": {"en": "Sign in to continue", "si": "ඉදිරියට යාමට පිවිසෙන්න"},
 
@@ -221,7 +224,7 @@ class AppLocale extends ChangeNotifier {
     "settings": {"en": "Settings", "si": "සැකසුම්"},
     "darkMode": {"en": "Dark Mode", "si": "අඳුරු ප්‍රකාරය"},
     "language": {"en": "Language", "si": "භාෂාව"},
-    "appVersion": {"en": "AgriLink AI 2.0", "si": "AgriLink AI 2.0"},
+    "appVersion": {"en": "ගොවි Tech 2.0", "si": "ගොවි Tech 2.0"},
     "logoutConfirm": {"en": "Are you sure you want to logout?", "si": "ඔබට ඉවත් වීමට අවශ්‍ය බව විශ්වාසද?"},
     "cancel": {"en": "Cancel", "si": "අවලංගු කරන්න"},
   };

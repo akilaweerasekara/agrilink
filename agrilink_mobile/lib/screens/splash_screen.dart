@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../localization/app_locale.dart';
 import 'home_screen.dart';
 import 'driver_home_screen.dart';
 import 'login_screen.dart';
@@ -82,13 +83,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: const Icon(Icons.eco_rounded, color: Colors.white, size: 44),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  "AgriLink AI",
-                  style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                Text(
+                  AppLocale.instance.t("appName"),
+                  style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Smart Agriculture Ecosystem",
+                  AppLocale.instance.t("tagline"),
                   style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13),
                 ),
               ],
