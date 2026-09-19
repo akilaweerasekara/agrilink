@@ -5,13 +5,27 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/voice_service.dart';
+import '../theme/app_theme.dart';
 import '../localization/app_locale.dart';
 
 class DiseaseScannerScreen extends StatefulWidget {
   final String? prefilledCropType;
   final String? reminderId;
+  // True when this screen is one of Home's bottom-nav tabs (Home already
+  // provides the Scaffold + AppBar in that case). False when it's pushed
+  // as its own full-screen route — e.g. from a disease reminder's
+  // "Upload Photo" button — where it needs its own AppBar with a back
+  // button, since nothing else on screen would otherwise let the farmer
+  // navigate back (this was the missing-back-button bug).
+  final bool embedded;
 
-  const DiseaseScannerScreen({super.key, this.prefilledCropType, this.reminderId});
+  const DiseaseScannerScreen({
+    super.key,
+    this.prefilledCropType,
+    this.reminderId,
+    this.embedded = true,
+  });
 
   @override
   State<DiseaseScannerScreen> createState() => _DiseaseScannerScreenState();
@@ -95,6 +109,10 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
       imageBase64: base64Image,
       latitude: latitude,
       longitude: longitude,
+      // Requests the result translated server-side into whatever language
+      // the farmer currently has selected — the disease name, severity,
+      // symptoms, and treatment text all come back pre-translated.
+      language: AppLocale.instance.languageCode,
     );
 
     setState(() {
@@ -118,8 +136,35 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// Builds a plain-text version of the current result, suitable for
+  /// text-to-speech readout — same content shown on screen, without the
+  /// visual formatting.
+  String _resultAsSpeech(Map<String, dynamic> result) {
+    final t = AppLocale.instance.t;
+    if (result["healthy"] == true) {
+      return t("healthyCrop");
+    }
+    final buffer = StringBuffer();
+    buffer.write(result["detectedDisease"] ?? "");
+    final severity = result["severity"];
+    if (severity != null) {
+      buffer.write(". ${t("severityLabel")}: $severity");
+    }
+    final treatment = result["treatment"];
+    if (treatment is Map) {
+      buffer.write(". ${t("recommendedTreatmentLabel")}: ");
+      buffer.write(treatment.values.whereType<String>().join(". "));
+    } else if (treatment is String) {
+      buffer.write(". ${t("recommendedTreatmentLabel")}: $treatment");
+    }
+    final outbreak = result["outbreakAlert"];
+    if (outbreak is Map && outbreak["message"] != null) {
+      buffer.write(". ${outbreak["message"]}");
+    }
+    return buffer.toString();
+  }
+
+  Widget _buildContent() {
     return ListenableBuilder(
       listenable: AppLocale.instance,
       builder: (context, _) {
@@ -201,7 +246,7 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(t("diagnose")),
               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
@@ -222,17 +267,29 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
   }
 
   List<Widget> _buildResultCards(Map<String, dynamic> result) {
+    final t = AppLocale.instance.t;
+
+    // Speaker button shown on every result variant (healthy or not) so
+    // the farmer can hear the outcome read aloud — this was previously
+    // missing entirely on this screen, unlike Chat and Timeline milestones.
+    Widget readAloudButton() => IconButton(
+          icon: const Icon(Icons.volume_up_rounded, color: AppColors.forest),
+          tooltip: t("readAloud"),
+          onPressed: () => VoiceService.speak(_resultAsSpeech(result)),
+        );
+
     if (result["healthy"] == true) {
       return [
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(12)),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 10),
-              Expanded(child: Text("No disease detected. Your crop looks healthy!")),
+              const Icon(Icons.check_circle, color: Colors.green),
+              const SizedBox(width: 10),
+              Expanded(child: Text(t("healthyCrop"))),
+              readAloudButton(),
             ],
           ),
         ),
@@ -262,11 +319,12 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
                     child: Text(disease, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                   Chip(label: Text("$confidence% match")),
+                  readAloudButton(),
                 ],
               ),
               if (severity != null) ...[
                 const SizedBox(height: 6),
-                Text("Severity: $severity", style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text("${t("severityLabel")}: $severity", style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
             ],
           ),
@@ -280,7 +338,7 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Recommended treatment", style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(t("recommendedTreatmentLabel"), style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ...treatment.entries.map(
                   (entry) => Padding(
@@ -305,10 +363,10 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
-                  Icon(Icons.campaign, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text("Regional Outbreak Alert", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                children: [
+                  const Icon(Icons.campaign, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Text(t("regionalOutbreakAlertLabel"), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -318,5 +376,26 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
         ),
       ],
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embedded) {
+      // Home tab context — Home's own Scaffold + AppBar already wraps this.
+      return _buildContent();
+    }
+
+    // Pushed as a standalone route (e.g. from a Reminder's "Upload Photo"
+    // button) — needs its own AppBar with a back button, since there's
+    // nothing else on screen that would let the farmer navigate back.
+    return ListenableBuilder(
+      listenable: AppLocale.instance,
+      builder: (context, _) {
+        return Scaffold(
+          appBar: AppBar(title: Text(AppLocale.instance.t("diseaseScanner"))),
+          body: _buildContent(),
+        );
+      },
+    );
   }
 }

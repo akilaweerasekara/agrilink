@@ -60,6 +60,19 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleCompleteSale(listing) {
+    if (!confirm(`Confirm you've received and paid for this ${listing.cropType} order? This can't be undone.`)) return;
+    setActionsDisabled(true);
+    const result = await api.completeSale(listing._id, buyerId);
+    setActionsDisabled(false);
+    if (result.success) {
+      showToast(`Order marked complete — thanks for confirming!`);
+      loadListings();
+    } else {
+      showToast(result.message || "Could not complete the sale.", "error");
+    }
+  }
+
   async function handleRejectConfirm({ reason, defectType }) {
     setActionsDisabled(true);
     const result = await api.rejectListing(rejectTarget._id, { rejectedBy: buyerId, reason, defectType });
@@ -105,7 +118,7 @@ export default function DashboardPage() {
                     <p className="text-sm text-ink-400 mt-1">
                       {activeTab === "browse" && "Fresh harvests listed directly by verified farmers."}
                       {activeTab === "secondary" && "Discounted crops redirected here after a primary buyer rejection — great for factories, restaurants, or compost use."}
-                      {activeTab === "orders" && "Orders you've confirmed across primary and secondary markets."}
+                      {activeTab === "orders" && "Orders you've confirmed across primary and secondary markets. Mark an order complete once you've received and paid for it."}
                     </p>
                   </div>
 
@@ -139,6 +152,7 @@ export default function DashboardPage() {
                         listing={listing}
                         onOrder={handleOrder}
                         onReject={(l) => setRejectTarget(l)}
+                        onCompleteSale={handleCompleteSale}
                         actionsDisabled={actionsDisabled}
                       />
                     ))}

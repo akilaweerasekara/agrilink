@@ -13,6 +13,7 @@ import '../widgets/crop_thumbnail.dart';
 import '../widgets/smooth_route.dart';
 import 'suppliers_screen.dart';
 import 'seasonal_calendar_screen.dart';
+import 'community_marketplace_screen.dart';
 
 class CropNavigatorScreen extends StatefulWidget {
   const CropNavigatorScreen({super.key});
@@ -233,6 +234,15 @@ class _CropNavigatorScreenState extends State<CropNavigatorScreen> {
                   onPressed: () => Navigator.push(context, SmoothRoute(page: const SuppliersScreen())),
                   icon: const Icon(Icons.storefront_outlined, size: 18),
                   label: Text(AppLocale.instance.t("findNearbySuppliers")),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(context, SmoothRoute(page: const CommunityMarketplaceScreen())),
+                  icon: const Icon(Icons.handshake_outlined, size: 18),
+                  label: Text(AppLocale.instance.t("communityMarketplace")),
                 ),
               ),
               const SizedBox(height: 8),

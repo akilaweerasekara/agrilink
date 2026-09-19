@@ -7,6 +7,8 @@ import '../localization/app_locale.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/shimmer_loading.dart';
+import '../models/map_pin_data.dart';
+import 'map_view_screen.dart';
 
 const Map<String, IconData> _typeIcons = {
   "seed_store": Icons.eco_rounded,
@@ -27,6 +29,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   List<dynamic> _suppliers = [];
   bool _isLoading = true;
   String? _errorMessage;
+  double _latitude = 7.2906;
+  double _longitude = 80.6337;
 
   final Map<String?, String> _filterLabels = {
     null: "All",
@@ -59,12 +63,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       }
     } catch (_) {}
 
-    final latitude = position?.latitude ?? 7.2906;
-    final longitude = position?.longitude ?? 80.6337;
+    _latitude = position?.latitude ?? 7.2906;
+    _longitude = position?.longitude ?? 80.6337;
 
     final result = await ApiService.getNearbySuppliers(
-      latitude: latitude,
-      longitude: longitude,
+      latitude: _latitude,
+      longitude: _longitude,
       radiusKm: 50,
       type: _typeFilter,
     );
@@ -86,6 +90,31 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     }
   }
 
+  void _openMap() {
+    final pins = _suppliers.map((s) {
+      final coords = (s["location"]?["coordinates"] as List?) ?? [80.6337, 7.2906];
+      return MapPinData(
+        name: s["businessName"] ?? "",
+        latitude: (coords[1] as num).toDouble(),
+        longitude: (coords[0] as num).toDouble(),
+        phone: s["contactPhone"] as String?,
+        subtitle: s["address"] as String?,
+      );
+    }).toList();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapViewScreen(
+          title: AppLocale.instance.t("nearbySuppliers"),
+          pins: pins,
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -93,7 +122,16 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       builder: (context, _) {
         final t = AppLocale.instance.t;
         return Scaffold(
-          appBar: AppBar(title: Text(t("nearbySuppliers"))),
+          appBar: AppBar(
+            title: Text(t("nearbySuppliers")),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.map_outlined),
+                tooltip: t("mapView"),
+                onPressed: _suppliers.isEmpty ? null : _openMap,
+              ),
+            ],
+          ),
           body: Column(
             children: [
               SizedBox(

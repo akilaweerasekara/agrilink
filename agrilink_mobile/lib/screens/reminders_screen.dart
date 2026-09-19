@@ -139,6 +139,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                             page: DiseaseScannerScreen(
                                               prefilledCropType: reminder["cropType"],
                                               reminderId: reminder["_id"],
+                                              // Pushed as its own route, not a Home
+                                              // tab — needs its own AppBar/back
+                                              // button. This was the missing-
+                                              // back-navigation bug.
+                                              embedded: false,
                                             ),
                                           ),
                                         ).then((_) => _loadReminders()),

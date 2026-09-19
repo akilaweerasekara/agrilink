@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Sparkles } from "lucide-react";
+import { MapPin, Calendar, Sparkles, PackageCheck } from "lucide-react";
 import { fadeSlideUp } from "../motion/variants.js";
 
-export default function ListingCard({ listing, onOrder, onReject, actionsDisabled }) {
+export default function ListingCard({ listing, onOrder, onReject, onCompleteSale, actionsDisabled }) {
   const isSecondary = listing.tier === "secondary";
   const statusColors = {
     listed: "bg-forest-50 text-forest-600",
@@ -83,6 +83,18 @@ export default function ListingCard({ listing, onOrder, onReject, actionsDisable
               </motion.button>
             )}
           </div>
+        )}
+
+        {listing.status === "reserved" && onCompleteSale && (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onCompleteSale(listing)}
+            disabled={actionsDisabled}
+            className="w-full flex items-center justify-center gap-1.5 bg-forest-600 hover:bg-forest-700 text-white text-sm font-medium py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <PackageCheck size={15} />
+            Mark Order Complete
+          </motion.button>
         )}
       </div>
     </motion.div>

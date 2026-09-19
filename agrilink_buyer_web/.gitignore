@@ -1,0 +1,16 @@
+# Dependency directories
+node_modules/
+
+# Vercel local build / deployment cache
+.vercel/
+
+# Production build output (if you ever build locally)
+dist/
+build/
+
+# Local environment secret variables (if you add them later)
+.env
+.env*.local
+
+# System/IDE leftovers
+.DS_Store

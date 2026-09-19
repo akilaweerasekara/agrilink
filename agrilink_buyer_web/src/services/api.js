@@ -68,6 +68,20 @@ export const api = {
     return handleResponse(response);
   },
 
+  // Marks a reserved order as actually completed (paid/received). Was
+  // missing entirely before — a reserved order had no way to ever become
+  // "sold" from the buyer's side, which is one of two reasons AI price
+  // prediction was stuck at a flat baseline (see backend
+  // pricePredictionEngine.js and marketplaceController.completeSale).
+  async completeSale(listingId, confirmedByUserId) {
+    const response = await fetch(`${BASE_URL}/marketplace/listings/${listingId}/complete-sale`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmedBy: confirmedByUserId }),
+    });
+    return handleResponse(response);
+  },
+
   async getPricePrediction(cropType) {
     const response = await fetch(`${BASE_URL}/price-predict/${encodeURIComponent(cropType)}`);
     return handleResponse(response);
