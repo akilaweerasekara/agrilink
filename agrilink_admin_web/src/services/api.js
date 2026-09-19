@@ -77,4 +77,59 @@ export const api = {
     });
     return handleResponse(response);
   },
+
+  // ---- Suppliers (business listings — seed/fertilizer/tool stores, equipment rental) ----
+  // Backend CRUD already existed (controllers/supplierController.js); this
+  // was the missing piece — no admin UI ever called it, so suppliers could
+  // only be added via the seed script or raw API calls (per the backend
+  // README's own "not built yet" note).
+
+  async getAllSuppliers(token) {
+    const response = await fetch(`${BASE_URL}/suppliers`, { headers: authHeaders(token) });
+    return handleResponse(response);
+  },
+
+  async createSupplier(token, supplierData) {
+    const response = await fetch(`${BASE_URL}/suppliers`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(supplierData),
+    });
+    return handleResponse(response);
+  },
+
+  async updateSupplier(token, id, updates) {
+    const response = await fetch(`${BASE_URL}/suppliers/${id}`, {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify(updates),
+    });
+    return handleResponse(response);
+  },
+
+  async deleteSupplier(token, id) {
+    const response = await fetch(`${BASE_URL}/suppliers/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  // ---- Community Listings (farmer-posted rentals & seeds) — moderation only ----
+  // Farmers create/edit/delete their own via the mobile app; admin's role
+  // here is purely oversight — viewing everything and removing anything
+  // inappropriate or spam, same pattern as Marketplace Oversight.
+
+  async getAllCommunityListings(token) {
+    const response = await fetch(`${BASE_URL}/community-listings`, { headers: authHeaders(token) });
+    return handleResponse(response);
+  },
+
+  async adminDeleteCommunityListing(token, id) {
+    const response = await fetch(`${BASE_URL}/community-listings/${id}/admin`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };

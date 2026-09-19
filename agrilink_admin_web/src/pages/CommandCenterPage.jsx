@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "../components/Sidebar.jsx";
 import OverviewTab from "./OverviewTab.jsx";
 import MarketplaceOversightTab from "./MarketplaceOversightTab.jsx";
+import SupplierManagementTab from "./SupplierManagementTab.jsx";
+import CommunityListingsTab from "./CommunityListingsTab.jsx";
 import AdSchedulerTab from "./AdSchedulerTab.jsx";
 import { api } from "../services/api.js";
 import { auth } from "../services/auth.js";
@@ -12,6 +14,8 @@ import { pageTransition } from "../motion/variants.js";
 const TAB_TITLES = {
   overview: "Platform Overview",
   marketplace: "Marketplace Oversight",
+  suppliers: "Supplier Directory",
+  community: "Rentals & Seeds",
   ads: "Ad Scheduler",
 };
 
@@ -55,6 +59,8 @@ export default function CommandCenterPage() {
                 <OverviewTab metrics={metrics} />
               ))}
             {activeTab === "marketplace" && <MarketplaceOversightTab />}
+            {activeTab === "suppliers" && <SupplierManagementTab />}
+            {activeTab === "community" && <CommunityListingsTab />}
             {activeTab === "ads" && <AdSchedulerTab />}
           </motion.div>
         </AnimatePresence>
