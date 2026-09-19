@@ -6,7 +6,7 @@ import { auth } from "../services/auth.js";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ fullName: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "", password: "", adminCode: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -39,8 +39,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="mb-4 text-xs text-amber-500 bg-amber-50/10 border border-amber-500/30 rounded-lg px-3 py-2">
-          Note: in a production system, admin accounts would be created by an existing admin, not via public
-          self-registration. This open registration is here for hackathon demo convenience only.
+          Admin accounts can only be created with the secret admin sign-up code set on the server.
         </div>
 
         <form onSubmit={handleSubmit} className="bg-slate-900 rounded-2xl p-8 shadow-xl border border-slate-800 space-y-4">
@@ -80,6 +79,18 @@ export default function RegisterPage() {
               minLength={6}
               value={form.password}
               onChange={(e) => update("password", e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-800 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-100/80 mb-1.5">Admin sign-up code</label>
+            <input
+              type="password"
+              required
+              autoComplete="off"
+              value={form.adminCode}
+              onChange={(e) => update("adminCode", e.target.value)}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-800 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>

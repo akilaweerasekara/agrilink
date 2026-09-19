@@ -19,11 +19,11 @@ function authHeaders(token) {
 }
 
 export const api = {
-  async register({ fullName, email, phone, password }) {
+  async register({ fullName, email, phone, password, adminCode }) {
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, email, phone, password, role: "admin" }),
+      body: JSON.stringify({ fullName, email, phone, password, adminCode, role: "admin" }),
     });
     return handleResponse(response);
   },
