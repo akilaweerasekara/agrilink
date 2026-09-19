@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
-import { Sprout, Tag, Package, HandCoins, LogOut } from "lucide-react";
+import { Sprout, Tag, Package, HandCoins, Users, Megaphone, LogOut } from "lucide-react";
 import { auth } from "../services/auth.js";
 
 const TABS = [
   { id: "browse", label: "Browse Marketplace", icon: Sprout },
   { id: "secondary", label: "Secondary Market", icon: Tag },
   { id: "orders", label: "My Orders", icon: Package },
+  { id: "lots", label: "Group Lots", icon: Users },
+  { id: "demand", label: "Demand Board", icon: Megaphone },
   { id: "invest", label: "Invest in Crops", icon: HandCoins },
 ];
 

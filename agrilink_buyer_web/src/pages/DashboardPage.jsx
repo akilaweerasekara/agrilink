@@ -6,6 +6,8 @@ import Sidebar from "../components/Sidebar.jsx";
 import ListingCard from "../components/ListingCard.jsx";
 import RejectModal from "../components/RejectModal.jsx";
 import InvestSection from "../components/InvestSection.jsx";
+import BulkLotsSection from "../components/BulkLotsSection.jsx";
+import DemandBoardSection from "../components/DemandBoardSection.jsx";
 import { SkeletonGrid } from "../components/Skeleton.jsx";
 import { staggerContainer, pageTransition } from "../motion/variants.js";
 import { api } from "../services/api.js";
@@ -30,7 +32,8 @@ export default function DashboardPage() {
   };
 
   const loadListings = useCallback(async () => {
-    if (activeTab === "invest") return;
+    // These tabs load their own data inside their own components.
+    if (activeTab === "invest" || activeTab === "lots" || activeTab === "demand") return;
     setIsLoading(true);
     let result;
     if (activeTab === "browse") {
@@ -106,6 +109,10 @@ export default function DashboardPage() {
           <motion.div key={activeTab} variants={pageTransition} initial="hidden" animate="visible" exit="exit">
             {activeTab === "invest" ? (
               <InvestSection buyerId={buyerId} showToast={showToast} />
+            ) : activeTab === "lots" ? (
+              <BulkLotsSection showToast={showToast} />
+            ) : activeTab === "demand" ? (
+              <DemandBoardSection showToast={showToast} />
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6">

@@ -6,6 +6,18 @@
 export const BASE_URL = "https://agrilink-backend.vercel.app/api";
 // export const BASE_URL = "http://localhost:5000/api";
 
+import { auth } from "./auth.js";
+
+// The newer endpoints (group lots, buyer requests) identify the buyer from
+// their login token — never from anything typed into the request body.
+function authHeaders(json = false) {
+  const token = auth.getSession()?.token;
+  return {
+    ...(json ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 async function handleResponse(response) {
   try {
     return await response.json();
@@ -106,6 +118,58 @@ export const api = {
 
   async getMyInvestments(investorId) {
     const response = await fetch(`${BASE_URL}/crowdfunding/investments?investorId=${investorId}`);
+    return handleResponse(response);
+  },
+
+  // ---------- Group lots (bulk buying from pooled farmers) ----------
+  async getGroupLots({ status, claimedByMe } = {}) {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (claimedByMe) params.set("claimedByMe", "true");
+    const response = await fetch(`${BASE_URL}/group-lots?${params.toString()}`, { headers: authHeaders() });
+    return handleResponse(response);
+  },
+
+  async claimGroupLot(lotId) {
+    const response = await fetch(`${BASE_URL}/group-lots/${lotId}/claim`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify({}),
+    });
+    return handleResponse(response);
+  },
+
+  // ---------- Demand board (buyer requests) ----------
+  async getMyDemandRequests() {
+    const response = await fetch(`${BASE_URL}/demand?mine=true`, { headers: authHeaders() });
+    return handleResponse(response);
+  },
+
+  async createDemandRequest({ cropType, quantityKg, maxPricePerKg, neededBy, district, note }) {
+    const response = await fetch(`${BASE_URL}/demand`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify({ cropType, quantityKg, maxPricePerKg, neededBy, district, note }),
+    });
+    return handleResponse(response);
+  },
+
+  async respondToOffer(requestId, offerId, action) {
+    // action is "accept" or "decline"
+    const response = await fetch(`${BASE_URL}/demand/${requestId}/offers/${offerId}/${action}`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify({}),
+    });
+    return handleResponse(response);
+  },
+
+  async cancelDemandRequest(requestId) {
+    const response = await fetch(`${BASE_URL}/demand/${requestId}/cancel`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify({}),
+    });
     return handleResponse(response);
   },
 };

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Sparkles, PackageCheck } from "lucide-react";
+import { MapPin, Calendar, Sparkles, PackageCheck, Timer } from "lucide-react";
 import { fadeSlideUp } from "../motion/variants.js";
 
 export default function ListingCard({ listing, onOrder, onReject, onCompleteSale, actionsDisabled }) {
@@ -9,6 +9,26 @@ export default function ListingCard({ listing, onOrder, onReject, onCompleteSale
     reserved: "bg-clay-50 text-clay-600",
     sold: "bg-ink-900/5 text-ink-400",
   };
+
+  // FRESHNESS CLOCK: the server sends how fresh the produce is right now and
+  // the live price that results (the price eases down as freshness runs out).
+  const fresh = listing.freshness;
+  const livePrice = fresh && listing.status === "listed" ? fresh.effectivePricePerKg : listing.currentPricePerKg;
+  const priceEased = fresh && listing.status === "listed" && livePrice < listing.currentPricePerKg - 0.05;
+  const freshStyles = {
+    fresh: "bg-forest-50 text-forest-600",
+    aging: "bg-clay-50 text-clay-600",
+    urgent: "bg-clay-100 text-clay-600",
+    expired: "bg-clay-100 text-clay-600",
+    not_harvested: "bg-ink-900/5 text-ink-700",
+  };
+  const freshText = !fresh
+    ? null
+    : fresh.label === "not_harvested"
+    ? `Harvest in ${fresh.daysUntilHarvest} day${fresh.daysUntilHarvest === 1 ? "" : "s"}`
+    : fresh.label === "expired"
+    ? "Freshness window ended"
+    : `${fresh.label === "fresh" ? "Fresh" : fresh.label === "aging" ? "Ageing" : "Sell soon"} · ${fresh.daysLeft} day${fresh.daysLeft === 1 ? "" : "s"} left`;
 
   return (
     <motion.div
@@ -39,9 +59,14 @@ export default function ListingCard({ listing, onOrder, onReject, onCompleteSale
         <div className="flex items-end justify-between mb-4">
           <div>
             <p className="font-mono text-2xl font-semibold text-ink-900">
-              LKR {listing.currentPricePerKg}
+              LKR {livePrice}
               <span className="text-sm font-normal text-ink-400">/kg</span>
             </p>
+            {priceEased && (
+              <p className="text-xs text-ink-400 font-mono mt-0.5">
+                <span className="line-through">LKR {listing.currentPricePerKg}</span> · eases with freshness
+              </p>
+            )}
             {listing.markdownPercentApplied > 0 && (
               <p className="text-xs text-clay-500 font-mono mt-0.5">
                 {listing.markdownPercentApplied}% off original LKR {listing.originalPricePerKg}/kg
@@ -61,6 +86,25 @@ export default function ListingCard({ listing, onOrder, onReject, onCompleteSale
             {listing.status}
           </span>
         </div>
+
+        {fresh && freshText && listing.status === "listed" && (
+          <div className="mb-4">
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${freshStyles[fresh.label] || "bg-ink-900/5"}`}
+            >
+              <Timer size={12} />
+              {freshText}
+            </span>
+            {fresh.label !== "not_harvested" && (
+              <div className="w-full bg-forest-50 rounded-full h-1.5 mt-2 overflow-hidden">
+                <div
+                  className={`h-1.5 rounded-full ${fresh.label === "fresh" ? "bg-forest-600" : "bg-clay-500"}`}
+                  style={{ width: `${fresh.percentRemaining}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {listing.status === "listed" && (
           <div className="flex gap-2">

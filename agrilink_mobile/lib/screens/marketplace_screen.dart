@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/insights_api.dart';
 import '../localization/app_locale.dart';
+import '../localization/tr.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/crop_picker_field.dart';
+import '../widgets/listing_card.dart';
+import '../widgets/price_forecast_card.dart';
+import '../widgets/ui_kit.dart';
+import '../theme/app_theme.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -21,8 +27,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   final _priceController = TextEditingController();
 
   bool _isSubmitting = false;
-  Map<String, dynamic>? _pricePrediction;
+  String _forecastCrop = "";
+  // When the produce is (or will be) harvested: 0 = today, 3 / 7 = in that many days.
+  // The Freshness Clock starts counting from this date.
+  int _harvestInDays = 0;
   List<dynamic> _myListings = [];
+  Map<String, Map<String, dynamic>> _adviceById = {};
   bool _isLoadingListings = true;
   String _farmerId = "";
 
@@ -30,6 +40,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   void initState() {
     super.initState();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _cropController.dispose();
+    _quantityController.dispose();
+    _priceController.dispose();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -40,21 +58,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   Future<void> _loadListings() async {
     if (_farmerId.isEmpty) return;
     setState(() => _isLoadingListings = true);
-    final result = await ApiService.getMyListings(_farmerId);
+    final result = await InsightsApi.getMyListings(_farmerId);
+    if (!mounted) return;
     setState(() {
       _myListings = result["success"] == true ? (result["data"] as List) : [];
       _isLoadingListings = false;
     });
+    _loadAdvice();
   }
 
-  Future<void> _checkPricePrediction() async {
-    if (_cropController.text.trim().isEmpty) return;
-    final result = await ApiService.getPricePrediction(_cropController.text.trim());
-    if (result["success"] == true) {
-      setState(() => _pricePrediction = result["data"]);
-    } else {
-      setState(() => _pricePrediction = null);
+  /// Sell-or-Hold advice for every live listing (failures are silent — the
+  /// listings still show, just without advice).
+  Future<void> _loadAdvice() async {
+    final result = await InsightsApi.getSellOrHold();
+    if (!mounted || result["success"] != true) return;
+    final map = <String, Map<String, dynamic>>{};
+    for (final item in (result["data"] as List)) {
+      final advice = Map<String, dynamic>.from(item as Map);
+      map["${advice["listingId"]}"] = advice;
     }
+    setState(() => _adviceById = map);
   }
 
   Future<void> _submitListing() async {
@@ -66,25 +89,24 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       cropType: _cropController.text.trim(),
       quantityKg: double.parse(_quantityController.text),
       pricePerKg: double.parse(_priceController.text),
-      harvestDate: DateTime.now().add(const Duration(days: 7)),
+      harvestDate: DateTime.now().add(Duration(days: _harvestInDays)),
     );
 
     setState(() => _isSubmitting = false);
-
     if (!mounted) return;
 
     if (result["success"] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Listing created successfully!")),
+        SnackBar(content: Text(tr("Listing created successfully!", "දැන්වීම සාර්ථකව සාදන ලදී!"))),
       );
       _cropController.clear();
       _quantityController.clear();
       _priceController.clear();
-      setState(() => _pricePrediction = null);
+      setState(() => _forecastCrop = "");
       _loadListings();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed: ${result["message"] ?? "Could not reach server. Is the backend running?"}")),
+        SnackBar(content: Text("Failed: ${result["message"] ?? "Could not reach server."}")),
       );
     }
   }
@@ -182,134 +204,128 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     }
   }
 
+  Widget _harvestChip(int days, String label) {
+    final selected = _harvestInDays == days;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 12.5)),
+        selected: selected,
+        selectedColor: AppColors.forest,
+        labelStyle: TextStyle(color: selected ? Colors.white : null, fontWeight: FontWeight.w600),
+        onSelected: (_) => setState(() => _harvestInDays = days),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: AppLocale.instance,
       builder: (context, _) {
         final t = AppLocale.instance.t;
-        return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AdBanner(),
-          Text(t("listYourHarvest"), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Form(
-            key: _formKey,
+        return RefreshIndicator(
+          onRefresh: _loadListings,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Pick from the crop list instead of typing: guarantees the same
-                // spelling the price-prediction engine and buyers' filters use,
-                // and asks for a price prediction ONCE per pick (the old text
-                // field fired a server request on every single keystroke).
-                CropPickerField(
-                  controller: _cropController,
-                  label: t("cropTypeLabel"),
-                  onSelected: (_) => _checkPricePrediction(),
-                  validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _quantityController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: t("quantityKg"), border: const OutlineInputBorder()),
-                  validator: (v) => (v == null || double.tryParse(v) == null) ? "Enter a valid number" : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _priceController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: t("askingPrice"), border: const OutlineInputBorder()),
-                  validator: (v) => (v == null || double.tryParse(v) == null) ? "Enter a valid number" : null,
-                ),
-                if (_pricePrediction != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      "AI market prediction: LKR ${_pricePrediction!["predictedPricePerKg"]}/kg "
-                      "(confidence: ${_pricePrediction!["confidence"]})\n"
-                      "This is a suggestion — you set the final asking price above.",
-                      style: const TextStyle(fontSize: 12),
-                    ),
+                const AdBanner(),
+                SectionHeader(title: t("listYourHarvest")),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      CropPickerField(
+                        controller: _cropController,
+                        label: t("cropTypeLabel"),
+                        onSelected: (crop) => setState(() => _forecastCrop = crop),
+                        validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _quantityController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(labelText: t("quantityKg"), border: const OutlineInputBorder()),
+                        validator: (v) => (v == null || double.tryParse(v) == null) ? "Enter a valid number" : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(labelText: t("askingPrice"), border: const OutlineInputBorder()),
+                        validator: (v) => (v == null || double.tryParse(v) == null) ? "Enter a valid number" : null,
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(tr("When is it harvested?", "අස්වැන්න නෙලන්නේ කවදාද?"),
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: mutedOf(context))),
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          children: [
+                            _harvestChip(0, tr("Today", "අද")),
+                            _harvestChip(3, tr("In 3 days", "දින 3කින්")),
+                            _harvestChip(7, tr("In 7 days", "දින 7කින්")),
+                          ],
+                        ),
+                      ),
+                      if (_forecastCrop.isNotEmpty)
+                        PriceForecastCard(
+                          cropType: _forecastCrop,
+                          onUsePrice: (price) => setState(() => _priceController.text = priceText(price)),
+                        ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isSubmitting ? null : _submitListing,
+                          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                          child: _isSubmitting
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : Text(t("listOnMarketplace")),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submitListing,
-                    style: ElevatedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(t("listOnMarketplace")),
+                ),
+                const SizedBox(height: 26),
+                SectionHeader(
+                  title: t("myListings"),
+                  subtitle: tr(
+                    "Live advice on each listing: freshness, market price trend and nearby supply.",
+                    "එක් එක් දැන්වීම සඳහා සජීවී උපදෙස්: නැවුම්බව, මිල ප්‍රවණතාව සහ අසල සැපයුම.",
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: tr("Refresh", "නැවුම් කරන්න"),
+                    onPressed: _loadListings,
                   ),
                 ),
+                if (_isLoadingListings)
+                  const Column(children: [ShimmerCard(), ShimmerCard()])
+                else if (_myListings.isEmpty)
+                  EmptyState(icon: Icons.inventory_2_outlined, title: t("noListingsYet"))
+                else
+                  ..._myListings.map((item) {
+                    final listing = Map<String, dynamic>.from(item as Map);
+                    return MyListingCard(
+                      key: ValueKey(listing["_id"]),
+                      listing: listing,
+                      advice: _adviceById["${listing["_id"]}"],
+                      onEdit: () => _openEditDialog(listing),
+                      onMarkSold: () => _markAsSold(listing),
+                    );
+                  }),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Text(t("myListings"), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          if (_isLoadingListings)
-            const Column(children: [ShimmerCard(), ShimmerCard()])
-          else if (_myListings.isEmpty)
-            EmptyState(icon: Icons.inventory_2_outlined, title: t("noListingsYet"))
-          else
-            ..._myListings.map((listing) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text("${listing["cropType"]} — ${listing["quantityKg"]}kg",
-                                  style: const TextStyle(fontWeight: FontWeight.w600)),
-                            ),
-                            Chip(
-                              label: Text(listing["status"], style: const TextStyle(fontSize: 11)),
-                              backgroundColor: listing["tier"] == "secondary" ? Colors.orange[100] : Colors.green[100],
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4, bottom: 6),
-                          child: Text("LKR ${listing["currentPricePerKg"]}/kg • Tier: ${listing["tier"]}",
-                              style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
-                        ),
-                        if (listing["status"] == "listed" || listing["status"] == "reserved")
-                          Row(
-                            children: [
-                              if (listing["status"] == "listed")
-                                TextButton.icon(
-                                  onPressed: () => _openEditDialog(listing),
-                                  icon: const Icon(Icons.edit_rounded, size: 15),
-                                  label: Text(t("editListing"), style: const TextStyle(fontSize: 12.5)),
-                                ),
-                              if (listing["status"] == "reserved")
-                                TextButton.icon(
-                                  onPressed: () => _markAsSold(listing),
-                                  icon: const Icon(Icons.check_circle_outline_rounded, size: 15),
-                                  label: Text(t("markAsSold"), style: const TextStyle(fontSize: 12.5)),
-                                ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                )),
-        ],
-      ),
-    );
+        );
       },
     );
   }
