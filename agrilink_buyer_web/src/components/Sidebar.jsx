@@ -15,8 +15,8 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }) {
   const session = auth.getSession();
 
   return (
-    <aside className="w-64 bg-forest-900 text-white flex flex-col h-screen sticky top-0">
-      <div className="p-6 border-b border-white/10">
+    <aside className="w-full lg:w-64 bg-forest-900 text-white flex flex-col h-auto lg:h-screen sticky top-0 z-30">
+      <div className="p-3 lg:p-6 border-b border-white/10">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
             <Sprout size={18} className="text-white" />
@@ -26,7 +26,7 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }) {
         <p className="text-xs text-forest-100/50 mt-2 tracking-wide uppercase pl-0.5">Buyer Portal</p>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex lg:flex-col lg:flex-1 gap-1 overflow-x-auto lg:overflow-visible p-2 lg:p-3 lg:space-y-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -34,7 +34,7 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className="relative w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors"
+              className="relative lg:w-full shrink-0 whitespace-nowrap flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-3 rounded-lg text-left transition-colors"
             >
               {isActive && (
                 <motion.div
@@ -50,9 +50,13 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }) {
             </button>
           );
         })}
+        <button onClick={onLogout} className="lg:hidden shrink-0 whitespace-nowrap flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-white/15 text-forest-100/80">
+          <LogOut size={14} />
+          Log out
+        </button>
       </nav>
 
-      <div className="p-4 border-t border-white/10">
+      <div className="hidden lg:block p-4 border-t border-white/10">
         <div className="mb-3 px-2">
           <p className="text-sm font-medium truncate">{session?.user?.fullName}</p>
           <p className="text-xs text-forest-100/50 truncate">{session?.user?.email}</p>

@@ -101,10 +101,10 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex flex-col lg:flex-row min-h-screen">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} variants={pageTransition} initial="hidden" animate="visible" exit="exit">
             {activeTab === "invest" ? (
