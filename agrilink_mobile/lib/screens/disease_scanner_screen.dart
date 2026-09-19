@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/voice_service.dart';
 import '../theme/app_theme.dart';
 import '../localization/app_locale.dart';
+import '../widgets/crop_picker_field.dart';
 
 class DiseaseScannerScreen extends StatefulWidget {
   final String? prefilledCropType;
@@ -45,7 +46,17 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
     super.initState();
     if (widget.prefilledCropType != null) {
       _cropController.text = widget.prefilledCropType!;
+    } else {
+      _prefillFromActiveTimeline();
     }
+  }
+
+  /// If the farmer is already growing something, start with that crop
+  /// selected — one less thing to do in the field. They can still change it.
+  Future<void> _prefillFromActiveTimeline() async {
+    final crops = await CropPickerField.activeCropNames();
+    if (!mounted || crops.isEmpty || _cropController.text.isNotEmpty) return;
+    setState(() => _cropController.text = crops.first);
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -83,7 +94,9 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
       return;
     }
     if (_cropController.text.trim().isEmpty) {
-      setState(() => _errorMessage = "Please enter the crop type.");
+      setState(() => _errorMessage = AppLocale.instance.languageCode == "si"
+          ? "කරුණාකර බෝගය තෝරන්න."
+          : "Please select the crop.");
       return;
     }
 
@@ -196,9 +209,9 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          TextField(
+          CropPickerField(
             controller: _cropController,
-            decoration: InputDecoration(labelText: t("cropTypeHint"), border: const OutlineInputBorder()),
+            label: AppLocale.instance.languageCode == "si" ? "බෝගය තෝරන්න" : "Select crop",
           ),
           const SizedBox(height: 16),
           if (_imageBytes != null)
@@ -299,7 +312,13 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
     final disease = result["detectedDisease"] ?? "Unknown";
     final confidence = ((result["confidenceScore"] ?? 0) * 100).toStringAsFixed(1);
     final severity = result["severity"];
-    final treatment = result["treatment"] as Map<String, dynamic>?;
+    // The server normally sends treatment as a map (chemical / biological /
+    // prevention), but can send plain text. Handle both instead of crashing.
+    final rawTreatment = result["treatment"];
+    final Map<String, dynamic>? treatment =
+        rawTreatment is Map ? Map<String, dynamic>.from(rawTreatment) : null;
+    final String? treatmentText =
+        rawTreatment is String && rawTreatment.trim().isNotEmpty ? rawTreatment : null;
     final outbreak = result["outbreakAlert"] as Map<String, dynamic>?;
 
     return [
@@ -330,6 +349,44 @@ class _DiseaseScannerScreenState extends State<DiseaseScannerScreen> {
           ),
         ),
       ),
+      if (result["lowConfidence"] == true) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.amber[300]!)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 18, color: Colors.amber),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppLocale.instance.languageCode == "si"
+                      ? "මෙම ප්‍රතිඵලය අඩු විශ්වාසයකින් යුක්තයි. කරුණාකර රෝග ඇති කොළයේ වඩාත් පැහැදිලි, සමීප ඡායාරූපයක් ගෙන නැවත උත්සාහ කරන්න."
+                      : "This result has low confidence. Please retake a clearer, close-up photo of the affected leaf and try again.",
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      if (treatmentText != null) ...[
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t("recommendedTreatmentLabel"), style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(treatmentText, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        ),
+      ],
       if (treatment != null) ...[
         const SizedBox(height: 10),
         Card(

@@ -5,6 +5,7 @@ import '../localization/app_locale.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/crop_picker_field.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -199,10 +200,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             key: _formKey,
             child: Column(
               children: [
-                TextFormField(
+                // Pick from the crop list instead of typing: guarantees the same
+                // spelling the price-prediction engine and buyers' filters use,
+                // and asks for a price prediction ONCE per pick (the old text
+                // field fired a server request on every single keystroke).
+                CropPickerField(
                   controller: _cropController,
-                  decoration: InputDecoration(labelText: t("cropTypeLabel"), border: const OutlineInputBorder()),
-                  onChanged: (_) => _checkPricePrediction(),
+                  label: t("cropTypeLabel"),
+                  onSelected: (_) => _checkPricePrediction(),
                   validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
                 ),
                 const SizedBox(height: 10),
