@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import '../localization/tr.dart';
 import '../services/insights_api.dart';
 import '../theme/app_theme.dart';
