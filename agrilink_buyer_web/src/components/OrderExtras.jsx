@@ -25,11 +25,17 @@ export default function OrderExtras({ order }) {
   const token = auth.getSession().token;
   const [qr, setQr] = useState(null);
   const [msg, setMsg] = useState("");
+  const [cases, setCases] = useState([]);
+  const [reply, setReply] = useState({});
   const fp = order.farmerPayment;
 
   useEffect(() => {
     if (fp?.qrPhotoId) api.photoBlobUrl(token, fp.qrPhotoId).then(setQr);
   }, [fp?.qrPhotoId, token]);
+
+  const loadCases = () => api.call(token, "GET", "/disputes/mine").then((r) => r.success && setCases(r.data.filter((d) => d.orderId === order.id)));
+  useEffect(() => { loadCases(); }, [order.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const send = async (id) => { if (!reply[id]) return; const r = await api.call(token, "POST", `/disputes/${id}/message`, { text: reply[id] }); if (r.success) { setReply({ ...reply, [id]: "" }); loadCases(); } else setMsg(r.message); };
 
   const addPhoto = async (e, label) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -45,6 +51,7 @@ export default function OrderExtras({ order }) {
     const description = window.prompt("Tell us what happened (optional):") || "";
     const r = await api.call(token, "POST", `/orders/${order.id}/dispute`, { reason, description });
     setMsg(r.success ? "Problem sent. The farmer and the AgriLink team can see it." : r.message);
+    loadCases();
   };
 
   const report = async () => {
@@ -70,6 +77,14 @@ export default function OrderExtras({ order }) {
           <button onClick={report} className="text-ink-400 underline">Report this seller</button>
         </div>
       )}
+      {cases.map((d) => (
+        <div key={d.id} className="rounded-xl border border-ink-900/10 p-3 text-sm">
+          <p className="font-semibold">Problem: {d.reason.replace("_", " ")} <span className="text-xs font-normal text-ink-400">({d.status})</span></p>
+          {d.messages.map((m, i) => <p key={i} className={m.mine ? "font-semibold" : ""}>{m.mine ? "You" : m.role}: {m.text}</p>)}
+          {d.resolution && <p className="mt-1 bg-forest-50 rounded p-2">Decision: {d.resolution}</p>}
+          {d.status === "open" && <div className="mt-2 flex gap-2"><input value={reply[d.id] || ""} onChange={(e) => setReply({ ...reply, [d.id]: e.target.value })} placeholder="Write a message" className="flex-1 border border-ink-900/10 rounded-lg px-3 py-1.5" /><button onClick={() => send(d.id)} className="border border-ink-900/10 rounded-lg px-3">Send</button></div>}
+        </div>
+      ))}
       {msg && <p className="text-xs text-ink-700">{msg}</p>}
     </div>
   );
