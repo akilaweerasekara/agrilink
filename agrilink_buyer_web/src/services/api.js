@@ -8,6 +8,15 @@ export const BASE_URL = "https://agrilink-backend.vercel.app/api";
 
 import { auth } from "./auth.js";
 
+// Every request carries the login token automatically (the server now requires it).
+const _nativeFetch = window.fetch.bind(window);
+function fetch(url, options = {}) {
+  const token = auth.getSession()?.token;
+  const headers = { ...(options.headers || {}) };
+  if (token && !headers.Authorization && !/\/auth\/(login|register)/.test(String(url))) headers.Authorization = `Bearer ${token}`;
+  return _nativeFetch(url, { ...options, headers });
+}
+
 // The newer endpoints (group lots, buyer requests) identify the buyer from
 // their login token — never from anything typed into the request body.
 function authHeaders(json = false) {
@@ -195,5 +204,15 @@ export const api = {
       body: JSON.stringify({}),
     });
     return handleResponse(response);
+  },
+
+  // ---- generic call + private photos (payment QR, order photos) ----
+  async call(token, method, path, body) {
+    const r = await fetch(`${BASE_URL}${path}`, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
+    try { return await r.json(); } catch { return { success: false, message: `Server returned status ${r.status}.` }; }
+  },
+  async photoBlobUrl(token, id) {
+    const r = await fetch(`${BASE_URL}/photos/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    return r.ok ? URL.createObjectURL(await r.blob()) : null;
   },
 };

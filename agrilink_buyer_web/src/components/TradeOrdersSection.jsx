@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { PackageCheck, Truck, Phone } from "lucide-react";
 import RejectModal from "./RejectModal.jsx";
+import OrderExtras from "./OrderExtras.jsx";
 import { api } from "../services/api.js";
 import { auth } from "../services/auth.js";
 
@@ -97,6 +98,8 @@ export default function TradeOrdersSection({ showToast }) {
                   {STEPS.map((s, i) => (<div key={s} className="flex-1"><div className={`h-1.5 rounded ${i <= idx ? "bg-forest-600" : "bg-ink-900/10"}`} /><p className={`text-[10px] mt-1 ${i <= idx ? "text-forest-600" : "text-ink-400"}`}>{STEP_LABEL[s]}</p></div>))}
                 </div>
               )}
+
+              <OrderExtras order={o} />
 
               {o.status === "dispatched" && o.deliveryCode && (
                 <div className="mt-4 rounded-xl bg-forest-50 border border-forest-100 p-4 text-center">
