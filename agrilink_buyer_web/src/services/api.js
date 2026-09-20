@@ -62,6 +62,30 @@ export const api = {
     return handleResponse(response);
   },
 
+  // ---- Orders (new flow): the server knows who you are from the login token ----
+  async placeOrder(listingId) {
+    const response = await fetch(`${BASE_URL}/orders`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ listingId }) });
+    return handleResponse(response);
+  },
+  async myOrders() {
+    return handleResponse(await fetch(`${BASE_URL}/orders/mine`, { headers: authHeaders() }));
+  },
+  async payOrder(id, method) {
+    return handleResponse(await fetch(`${BASE_URL}/orders/${id}/pay`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ method }) }));
+  },
+  async newDeliveryCode(id) {
+    return handleResponse(await fetch(`${BASE_URL}/orders/${id}/new-code`, { method: "POST", headers: authHeaders(true), body: "{}" }));
+  },
+  async cancelOrder(id, reason, qualityRejected = false) {
+    return handleResponse(await fetch(`${BASE_URL}/orders/${id}/cancel`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ reason, qualityRejected }) }));
+  },
+  async rateOrder(orderId, stars, tags, comment) {
+    return handleResponse(await fetch(`${BASE_URL}/ratings`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ orderId, stars, tags, comment }) }));
+  },
+  async trustBatch(ids) {
+    return handleResponse(await fetch(`${BASE_URL}/ratings/trust`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ ids }) }));
+  },
+
   async confirmOrder(listingId, buyerId) {
     const response = await fetch(`${BASE_URL}/marketplace/listings/${listingId}/confirm-order`, {
       method: "PATCH",

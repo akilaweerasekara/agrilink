@@ -2,7 +2,9 @@ import { motion } from "framer-motion";
 import { MapPin, Calendar, Sparkles, PackageCheck, Timer } from "lucide-react";
 import { fadeSlideUp } from "../motion/variants.js";
 
-export default function ListingCard({ listing, onOrder, onReject, onCompleteSale, actionsDisabled }) {
+const BADGE = { top: ["Top rated", "bg-clay-50 text-clay-600"], trusted: ["Trusted", "bg-forest-50 text-forest-600"], rising: ["Rising", "bg-ink-900/5 text-ink-700"], new: ["New seller", "bg-ink-900/5 text-ink-400"] };
+
+export default function ListingCard({ listing, onOrder, onReject, onCompleteSale, actionsDisabled, trust }) {
   const isSecondary = listing.tier === "secondary";
   const statusColors = {
     listed: "bg-forest-50 text-forest-600",
@@ -44,6 +46,11 @@ export default function ListingCard({ listing, onOrder, onReject, onCompleteSale
             <p className="text-xs text-ink-400 mt-0.5 flex items-center gap-1">
               <MapPin size={11} />
               {listing.farmer?.fullName || "Farmer"} · {listing.farmer?.farmerProfile?.district || "Sri Lanka"}
+              {trust && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${(BADGE[trust.badge] || BADGE.new)[1]}`}>
+                  {trust.ratingCount > 0 ? `${trust.average}★ · ` : ""}{(BADGE[trust.badge] || BADGE.new)[0]}
+                </span>
+              )}
             </p>
           </div>
           <span

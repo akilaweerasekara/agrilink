@@ -8,6 +8,7 @@ import RejectModal from "../components/RejectModal.jsx";
 import InvestSection from "../components/InvestSection.jsx";
 import BulkLotsSection from "../components/BulkLotsSection.jsx";
 import DemandBoardSection from "../components/DemandBoardSection.jsx";
+import TradeOrdersSection from "../components/TradeOrdersSection.jsx";
 import { SkeletonGrid } from "../components/Skeleton.jsx";
 import { staggerContainer, pageTransition } from "../motion/variants.js";
 import { api } from "../services/api.js";
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const [toast, setToast] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [actionsDisabled, setActionsDisabled] = useState(false);
+  const [trustMap, setTrustMap] = useState({});
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -33,7 +35,7 @@ export default function DashboardPage() {
 
   const loadListings = useCallback(async () => {
     // These tabs load their own data inside their own components.
-    if (activeTab === "invest" || activeTab === "lots" || activeTab === "demand") return;
+    if (activeTab === "invest" || activeTab === "lots" || activeTab === "demand" || activeTab === "orders") return;
     setIsLoading(true);
     let result;
     if (activeTab === "browse") {
@@ -43,8 +45,15 @@ export default function DashboardPage() {
     } else {
       result = await api.getListings({ orderedBy: buyerId });
     }
-    setListings(result.success ? result.data : []);
+    const found = result.success ? result.data : [];
+    setListings(found);
     setIsLoading(false);
+    // Trust badges for the farmers shown on screen (a failure just means no badges).
+    const ids = [...new Set(found.map((l) => l.farmer?._id).filter(Boolean))];
+    if (ids.length) {
+      const trust = await api.trustBatch(ids);
+      if (trust.success) setTrustMap(trust.data);
+    }
   }, [activeTab, cropFilter, buyerId]);
 
   useEffect(() => {
@@ -53,11 +62,11 @@ export default function DashboardPage() {
 
   async function handleOrder(listing) {
     setActionsDisabled(true);
-    const result = await api.confirmOrder(listing._id, buyerId);
+    const result = await api.placeOrder(listing._id);
     setActionsDisabled(false);
     if (result.success) {
-      showToast(`Order confirmed for ${listing.cropType} (${listing.quantityKg}kg).`);
-      loadListings();
+      showToast(`Order placed for ${listing.cropType} (${listing.quantityKg}kg). The farmer will accept it soon.`);
+      setActiveTab("orders");
     } else {
       showToast(result.message || "Could not confirm order.", "error");
     }
@@ -111,6 +120,8 @@ export default function DashboardPage() {
               <InvestSection buyerId={buyerId} showToast={showToast} />
             ) : activeTab === "lots" ? (
               <BulkLotsSection showToast={showToast} />
+            ) : activeTab === "orders" ? (
+              <TradeOrdersSection showToast={showToast} />
             ) : activeTab === "demand" ? (
               <DemandBoardSection showToast={showToast} />
             ) : (
@@ -161,6 +172,7 @@ export default function DashboardPage() {
                         onReject={(l) => setRejectTarget(l)}
                         onCompleteSale={handleCompleteSale}
                         actionsDisabled={actionsDisabled}
+                        trust={trustMap[listing.farmer?._id]}
                       />
                     ))}
                   </motion.div>
